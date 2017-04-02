@@ -40,17 +40,20 @@ public class Basic3DTest implements ApplicationListener {
     static final float OBSTACLE_DEPTH = 0.9f;
     static final float SPEED_ADD = 0.0004f;
     static final float BASE_SPEED = 0.4f;
+    static final int NETWORKS_PER_EPOCH = 3;
     float baseSpeed;
     float velocity = 0.0f;
+    int networkIndex;
+    int epoch;
     BitmapFont font; //or use alex answer to use custom font
     boolean gameOn;
     MuseOscServer mos;
+    ObstacleManager[] networks;
 
     ModelBuilder modelBuilder;
     Model hurdleModel;
     Model leftWallModel;
     Model rightWallModel;
-    ObstacleManager myMan;
 
     public float time = 0;
     public long lastUpdateTime;
@@ -61,13 +64,29 @@ public class Basic3DTest implements ApplicationListener {
     public Basic3DTest() {
         mos = new MuseOscServer();
         mos.start();
+        epoch = 0;
+        networkIndex = -1;
+        networks = new ObstacleManager[NETWORKS_PER_EPOCH];
+        for (int i = 0; i < NETWORKS_PER_EPOCH; i++) networks[i] = new ObstacleManager();
     }
+
     @Override
     public void create () {
         reset();
     }
 
     public void reset() {
+
+        // Manage network updates
+        networkIndex++;
+        if (networkIndex >= NETWORKS_PER_EPOCH) {
+            // evolve
+            networkIndex = 0;
+
+            // TODO: Evolution
+            for (int i = 0; i < NETWORKS_PER_EPOCH; i++) networks[i] = new ObstacleManager();
+            epoch++;
+        }
 
         modelBuilder = new ModelBuilder();
 
@@ -85,7 +104,6 @@ public class Basic3DTest implements ApplicationListener {
                 VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
         hurdles = new ArrayList<ModelInstance>();
 
-        myMan = new ObstacleManager();
         baseSpeed = BASE_SPEED;
         environment = new Environment();
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.15f, 0.1f, 0.1f, 9f));
@@ -135,7 +153,7 @@ public class Basic3DTest implements ApplicationListener {
             movingModels.add(sInstance);
         }
 
-        mintObstacleSet(myMan.planObstacles(), 30);
+        mintObstacleSet(networks[networkIndex].planObstacles(), 30);
     }
 
     private void mintObstacleSet(int[] obstacles, float initY) {
@@ -245,7 +263,7 @@ public class Basic3DTest implements ApplicationListener {
             }
             hurdles = copyModels;
             if (hurdles.size() < 8) {
-                mintObstacleSet(myMan.planObstacles(), 150);
+                mintObstacleSet(networks[networkIndex].planObstacles(), 150);
             }
 
             grassInstance.transform.setToTranslation(0,10,-2);
@@ -263,7 +281,9 @@ public class Basic3DTest implements ApplicationListener {
             modelBatch.render(fogInstance,environment);
             modelBatch.end();
             batchBatch.begin();
-            font.draw(batchBatch,"Stress Level: " + mos.getNormalizedStressVar(),Gdx.graphics.getWidth() /4,Gdx.graphics.getWidth() / 4);
+            font.draw(batchBatch,"Stress Level: " + mos.getNormalizedStressVar(),25,25);
+            font.draw(batchBatch,"Epoch: " + epoch,25,50);
+            font.draw(batchBatch,"Network: " + (networkIndex+1) + " / " + NETWORKS_PER_EPOCH,25,75);
             batchBatch.end();
         } else {
             modelBatch.begin(cam);
