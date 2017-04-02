@@ -15,6 +15,7 @@ import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.math.Vector3;
+import happy.people.ObstacleManager.ObstacleManager;
 
 import java.util.ArrayList;
 
@@ -45,6 +46,12 @@ public class Basic3DTest implements ApplicationListener {
     boolean gameOn;
     MuseOscServer mos;
 
+    ModelBuilder modelBuilder;
+    Model hurdleModel;
+    Model leftWallModel;
+    Model rightWallModel;
+    ObstacleManager myMan;
+
     public float time = 0;
     public long lastUpdateTime;
     private final float JUMP_VELOCITY = 0.4f;
@@ -61,6 +68,24 @@ public class Basic3DTest implements ApplicationListener {
     }
 
     public void reset() {
+
+        modelBuilder = new ModelBuilder();
+
+        // Obstacle models
+        hurdleModel = modelBuilder.createBox(3f, 0.9f, OBSTACLE_HEIGHT + 1,
+                new Material(ColorAttribute.createReflection(Color.YELLOW)),
+                VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
+
+        leftWallModel = modelBuilder.createBox(1f, 0.9f, OBSTACLE_HEIGHT + 10,
+                new Material(ColorAttribute.createReflection(Color.RED)),
+                VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
+
+        rightWallModel = modelBuilder.createBox(1f, 0.9f, OBSTACLE_HEIGHT + 10,
+                new Material(ColorAttribute.createReflection(Color.BLUE)),
+                VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
+        hurdles = new ArrayList<ModelInstance>();
+
+        myMan = new ObstacleManager();
         baseSpeed = BASE_SPEED;
         environment = new Environment();
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.15f, 0.1f, 0.1f, 9f));
@@ -76,8 +101,6 @@ public class Basic3DTest implements ApplicationListener {
         cam.near = 1f;
         cam.far = 300f;
         cam.update();
-
-        ModelBuilder modelBuilder = new ModelBuilder();
 
         // Fog
         Color fogColor = new Color(0.01f,0.01f,0.01f,0.97f);
@@ -112,16 +135,32 @@ public class Basic3DTest implements ApplicationListener {
             movingModels.add(sInstance);
         }
 
-        // Hurdles
-        hurdles = new ArrayList<ModelInstance>();
-        Model hurdleModel = modelBuilder.createBox(3f, 0.9f, OBSTACLE_HEIGHT + 1,
-                new Material(ColorAttribute.createReflection(Color.YELLOW)),
-                VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
-        for (float y = 30; y < resetDistance; y += 15) {
-            ModelInstance sInstance = new ModelInstance(hurdleModel);
-            sInstance.transform.setToTranslation(0,y,-1);
-            movingModels.add(sInstance);
-            hurdles.add(sInstance);
+        mintObstacleSet(myMan.planObstacles(), 30);
+    }
+
+    private void mintObstacleSet(int[] obstacles, float initY) {
+        float y = initY;
+        ModelInstance mInstance;
+        for (int i = 0; i < obstacles.length; i++) {
+            switch (obstacles[i]) {
+                case ObstacleManager.OBSTACLE_NONE: break;
+                case ObstacleManager.OBSTACLE_LEFT:
+                    mInstance = new ModelInstance(leftWallModel);
+                    mInstance.transform.setToTranslation(-1,y,-1);
+                    hurdles.add(mInstance);
+                    break;
+                case ObstacleManager.OBSTACLE_RIGHT:
+                    mInstance = new ModelInstance(rightWallModel);
+                    mInstance.transform.setToTranslation(1,y,-1);
+                    hurdles.add(mInstance);
+                    break;
+                case ObstacleManager.OBSTACLE_HURDLE:
+                    mInstance = new ModelInstance(hurdleModel);
+                    mInstance.transform.setToTranslation(0,y,-1);
+                    hurdles.add(mInstance);
+                    break;
+            }
+            y += 15;
         }
     }
 
@@ -184,6 +223,21 @@ public class Basic3DTest implements ApplicationListener {
                 instance.transform.setToTranslation(mxyz.x,mxyz.y,mxyz.z);
             }
 
+            ArrayList<ModelInstance> copyModels = new ArrayList<ModelInstance>();
+            for (ModelInstance instance : hurdles) {
+                Vector3 give = new Vector3();
+                Vector3 mxyz = instance.transform.getTranslation(give);
+                mxyz.y -= speed * 0.3;
+                if (mxyz.y >= resetPos) {
+                    copyModels.add(instance);
+                }
+                instance.transform.setToTranslation(mxyz.x,mxyz.y,mxyz.z);
+            }
+            hurdles = copyModels;
+            if (hurdles.size() < 8) {
+                mintObstacleSet(myMan.planObstacles(), 150);
+            }
+
             grassInstance.transform.setToTranslation(0,10,-2);
             Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
             Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
@@ -191,6 +245,9 @@ public class Basic3DTest implements ApplicationListener {
             modelBatch.begin(cam);
             modelBatch.render(grassInstance, environment);
             for (ModelInstance instance : movingModels) {
+                modelBatch.render(instance, environment);
+            }
+            for (ModelInstance instance : hurdles) {
                 modelBatch.render(instance, environment);
             }
             modelBatch.render(fogInstance,environment);

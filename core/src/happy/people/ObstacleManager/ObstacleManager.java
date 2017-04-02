@@ -17,8 +17,8 @@ public class ObstacleManager {
         }
     }
 
-    public static final int UNIT_SIZE = 30;
-    public static final int MAX_OBSTACLE_PER_UNIT = 20;
+    public static final int UNIT_SIZE = 10;
+    public static final int MAX_OBSTACLE_PER_UNIT = 8;
     public static final int OBSTACLE_NONE = -1;
     public static final int OBSTACLE_LEFT = 0;
     public static final int OBSTACLE_RIGHT = 1;
@@ -29,13 +29,18 @@ public class ObstacleManager {
 
     public int[] planObstacles() {
         int[] obstacles = new int[UNIT_SIZE];
-        for (int i = 0; i < UNIT_SIZE; i++) obstacles[i] = 0;
+        for (int i = 0; i < UNIT_SIZE; i++) obstacles[i] = -1;
         int numPlaced = 0;
         for (int i = 0; i < UNIT_SIZE; i++) {
             if (numPlaced >= MAX_OBSTACLE_PER_UNIT) break;
             lastOutput = topNeuron.calculate(lastOutput);
             obstacles[i] = neuronToObstacle(lastOutput);
             if (obstacles[i] != -1) numPlaced++;
+        }
+
+        if (numPlaced == 0) {
+            // Corrective obstacle
+            obstacles[0] = 2;
         }
 
         return obstacles;
