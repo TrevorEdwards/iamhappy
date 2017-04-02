@@ -228,7 +228,7 @@ public class Basic3DTest implements ApplicationListener {
         float secondsElapsed = Gdx.graphics.getDeltaTime();
         time++;
 
-        if (gameOn) {
+        if (gameOn && cam.position.y < 10) {
             speed = mos.getNormalizedStressVar() + baseSpeed;
             baseSpeed += SPEED_ADD;
 
