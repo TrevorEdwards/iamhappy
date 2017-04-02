@@ -39,7 +39,7 @@ public class Basic3DTest implements ApplicationListener {
     ArrayList<ModelInstance> movingModels;
     static final float resetDistance = 200;
     static final float resetPos = -10;
-    static float speed = 1.0f;
+    float speed = 1.0f;
     static final float camheight = 0.5f;
     static final float addheight = 1.0f;
     static final float gravity = 1.3f;
@@ -193,7 +193,7 @@ public class Basic3DTest implements ApplicationListener {
         Model fogModel = modelBuilder.createBox(1000f,10f,1000f, new Material(ColorAttribute.createDiffuse(fogColor)), VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
         fogModel.materials.get(0).set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));
         fogInstance = new ModelInstance(fogModel);
-        fogInstance.transform.setToTranslation(0,150f,0);
+        fogInstance.transform.setToTranslation(0,100f,0);
 
         // Grass
         grass = modelBuilder.createBox(200f,200f,2f, new Material(ColorAttribute.createDiffuse(Color.DARK_GRAY)),VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
@@ -258,6 +258,11 @@ public class Basic3DTest implements ApplicationListener {
         if (gameOn) {
             speed = mos.getNormalizedStressVar() + baseSpeed;
             baseSpeed += SPEED_ADD;
+
+            float lightWow = 0.2f + (speed - BASE_SPEED) / (8*BASE_SPEED);
+            environment.set(new ColorAttribute(ColorAttribute.AmbientLight, lightWow, lightWow, lightWow, 9f));
+            fogInstance.materials.get(0).set(ColorAttribute.createDiffuse(new Color(lightWow - 0.2f,0,0,1.00f)));
+//            environment.add(new DirectionalLight().set(0.3f, 0.3f, 0.3f, 0f, 90f, 0f));
 
             // Shitty physics
             float z = cam.position.z;
@@ -333,8 +338,8 @@ public class Basic3DTest implements ApplicationListener {
                 instance.transform.setToTranslation(mxyz.x,mxyz.y,mxyz.z);
             }
             hurdles = copyModels;
-            if (hurdles.size() < 8) {
-                mintObstacleSet(networks[networkIndex].planObstacles(), 160);
+            if (hurdles.size() < 9) {
+                mintObstacleSet(networks[networkIndex].planObstacles(), 150 + resetPos);
             }
 
             grassInstance.transform.setToTranslation(0,10,-2);

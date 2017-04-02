@@ -21,7 +21,7 @@ public class ObstacleManager implements Comparable {
     }
 
     public static final int UNIT_SIZE = 10;
-    public static final int MAX_OBSTACLE_PER_UNIT = 8;
+    public static final int MAX_OBSTACLE_PER_UNIT = 10;
     public static final int OBSTACLE_NONE = -1;
     public static final int OBSTACLE_LEFT = 0;
     public static final int OBSTACLE_RIGHT = 1;
