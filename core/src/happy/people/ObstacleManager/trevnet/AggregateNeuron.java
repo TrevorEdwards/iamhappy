@@ -7,6 +7,21 @@ public class AggregateNeuron extends Neuron {
     private float lastOutputWeight;
     private ArrayList<Neuron> children;
 
+    public AggregateNeuron(AggregateNeuron toCopy) {
+        this.children = new ArrayList<Neuron>();
+        for (Neuron n : toCopy.children) {
+            if (n instanceof AggregateNeuron) {
+                children.add(new AggregateNeuron((AggregateNeuron) n));
+            } else if (n instanceof PrimitiveNeuron) {
+                children.add(new PrimitiveNeuron((PrimitiveNeuron) n));
+            } else {
+            }
+        }
+
+        this.weights = (ArrayList<Float>) toCopy.weights.clone();
+        this.lastOutputWeight = toCopy.lastOutputWeight;
+    }
+
     public AggregateNeuron(ArrayList<Neuron> children) {
         this.children = children;
         this.weights = new ArrayList<Float>();

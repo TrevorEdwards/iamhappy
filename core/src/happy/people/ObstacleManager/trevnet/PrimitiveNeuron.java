@@ -7,6 +7,10 @@ public class PrimitiveNeuron extends Neuron {
         weight = weightRandom();
     }
 
+    public PrimitiveNeuron(PrimitiveNeuron toCopy) {
+        weight = toCopy.weight;
+    }
+
     @Override
     public float calculate(float lastOutput) {
         return normalize(weight);

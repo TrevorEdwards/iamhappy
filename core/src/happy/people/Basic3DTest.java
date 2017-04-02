@@ -18,6 +18,9 @@ import com.badlogic.gdx.math.Vector3;
 import happy.people.ObstacleManager.ObstacleManager;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class Basic3DTest implements ApplicationListener {
 
@@ -40,15 +43,18 @@ public class Basic3DTest implements ApplicationListener {
     static final float OBSTACLE_DEPTH = 0.9f;
     static final float SPEED_ADD = 0.0004f;
     static final float BASE_SPEED = 0.4f;
-    static final int NETWORKS_PER_EPOCH = 3;
+    static final int NETWORKS_PER_EPOCH = 4;
     float baseSpeed;
     float velocity = 0.0f;
     int networkIndex;
     int epoch;
+    float distanceTraveled;
+    float stressGenerated;
     BitmapFont font; //or use alex answer to use custom font
     boolean gameOn;
     MuseOscServer mos;
     ObstacleManager[] networks;
+    float[] rewards;
 
     ModelBuilder modelBuilder;
     Model hurdleModel;
@@ -67,6 +73,7 @@ public class Basic3DTest implements ApplicationListener {
         epoch = 0;
         networkIndex = -1;
         networks = new ObstacleManager[NETWORKS_PER_EPOCH];
+        rewards = new float[NETWORKS_PER_EPOCH];
         for (int i = 0; i < NETWORKS_PER_EPOCH; i++) networks[i] = new ObstacleManager();
     }
 
@@ -77,11 +84,45 @@ public class Basic3DTest implements ApplicationListener {
 
     public void reset() {
 
+        if (networkIndex > -1) {
+            rewards[networkIndex] = objectiveFunction(distanceTraveled,stressGenerated);
+        }
+
+        distanceTraveled = 0;
+        stressGenerated = 0;
+
         // Manage network updates
         networkIndex++;
         if (networkIndex >= NETWORKS_PER_EPOCH) {
             // evolve
             networkIndex = 0;
+
+            // Apply rewards and sort
+            for (int i = 0; i < NETWORKS_PER_EPOCH; i++) {
+                networks[i].reward = rewards[i];
+            }
+
+            ArrayList<ObstacleManager> forWorking = new ArrayList<ObstacleManager>();
+            for (int i = 0; i < NETWORKS_PER_EPOCH; i++) forWorking.add(networks[i]);
+            Collections.sort(forWorking);
+
+            // Keep first, evolve first/second, second/third, random fourth.
+            ObstacleManager[] newNetworks = new ObstacleManager[NETWORKS_PER_EPOCH];
+            newNetworks[0] = new ObstacleManager(networks[0]);
+            for (int i = 0; i < NETWORKS_PER_EPOCH - 1; i++) {
+                // 50% chance of crossing over, 50% chance of mutation
+                if (Math.random() < 0.5) {
+                    // Mutation
+                    ObstacleManager mutated = new ObstacleManager(networks[i], true);
+                } else {
+                    // Crossing over
+                    ObstacleManager mutated = new ObstacleManager(networks[i], networks[i+1]);
+                }
+            }
+
+            newNetworks[NETWORKS_PER_EPOCH-1] = new ObstacleManager();
+            networks = newNetworks;
+
 
             // TODO: Evolution
             for (int i = 0; i < NETWORKS_PER_EPOCH; i++) networks[i] = new ObstacleManager();
@@ -251,6 +292,9 @@ public class Basic3DTest implements ApplicationListener {
                 instance.transform.setToTranslation(mxyz.x,mxyz.y,mxyz.z);
             }
 
+            distanceTraveled += speed;
+            stressGenerated += mos.getNormalizedStressVar();
+
             ArrayList<ModelInstance> copyModels = new ArrayList<ModelInstance>();
             for (ModelInstance instance : hurdles) {
                 Vector3 give = new Vector3();
@@ -263,7 +307,7 @@ public class Basic3DTest implements ApplicationListener {
             }
             hurdles = copyModels;
             if (hurdles.size() < 8) {
-                mintObstacleSet(networks[networkIndex].planObstacles(), 150);
+                mintObstacleSet(networks[networkIndex].planObstacles(), 160);
             }
 
             grassInstance.transform.setToTranslation(0,10,-2);
@@ -284,6 +328,7 @@ public class Basic3DTest implements ApplicationListener {
             font.draw(batchBatch,"Stress Level: " + mos.getNormalizedStressVar(),25,25);
             font.draw(batchBatch,"Epoch: " + epoch,25,50);
             font.draw(batchBatch,"Network: " + (networkIndex+1) + " / " + NETWORKS_PER_EPOCH,25,75);
+            font.draw(batchBatch,"Objective Function: " + objectiveFunction(distanceTraveled,stressGenerated),25,100);
             batchBatch.end();
         } else {
             modelBatch.begin(cam);
@@ -294,6 +339,10 @@ public class Basic3DTest implements ApplicationListener {
             batchBatch.end();
             if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) gameOn = true;
         }
+    }
+
+    private float objectiveFunction(float distanceTraveled, float stressGenerated) {
+        return 10 * (1 + stressGenerated) / (distanceTraveled);
     }
 
     @Override

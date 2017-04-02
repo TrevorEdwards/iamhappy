@@ -6,7 +6,9 @@ import happy.people.ObstacleManager.trevnet.PrimitiveNeuron;
 
 import java.util.ArrayList;
 
-public class ObstacleManager {
+public class ObstacleManager implements Comparable {
+
+    public float reward;
 
     public static void main(String[] args) {
         // test
@@ -38,9 +40,12 @@ public class ObstacleManager {
             if (obstacles[i] != -1) numPlaced++;
         }
 
-        if (numPlaced == 0) {
+        int fixIt = 0;
+        while (numPlaced < MAX_OBSTACLE_PER_UNIT) {
             // Corrective obstacle
-            obstacles[0] = 2;
+            obstacles[fixIt] = 2;
+            numPlaced++;
+            fixIt++;
         }
 
         return obstacles;
@@ -59,6 +64,30 @@ public class ObstacleManager {
         topNeuron = new AggregateNeuron(children);
     }
 
+    // Copy constructor
+    public ObstacleManager(ObstacleManager toCopy) {
+        lastOutput = toCopy.lastOutput;
+        if (toCopy.topNeuron instanceof AggregateNeuron) {
+            topNeuron = new AggregateNeuron((AggregateNeuron) toCopy.topNeuron);
+        } else if (toCopy.topNeuron instanceof PrimitiveNeuron) {
+            topNeuron = new PrimitiveNeuron((PrimitiveNeuron) toCopy.topNeuron);
+        } else {
+            topNeuron = null;
+        }
+    }
+
+    // Mutation constructor
+    public ObstacleManager(ObstacleManager oLeft, boolean doMutation) {
+        // TODO mutation
+        this();
+    }
+
+    // Crossing over constructor
+    public ObstacleManager(ObstacleManager oLeft, ObstacleManager oRight) {
+        // TODO Crossing over
+        this(oLeft);
+    }
+
     public int neuronToObstacle(float neuronOut) {
         if (neuronOut < 0.25) {
             return OBSTACLE_NONE;
@@ -69,6 +98,22 @@ public class ObstacleManager {
         } else {
             return OBSTACLE_HURDLE;
         }
+    }
+
+    @Override
+    public int compareTo(Object other) {
+        if (other instanceof ObstacleManager) {
+            ObstacleManager om = (ObstacleManager) other;
+            if (this.reward > om.reward) {
+                return 1;
+            }
+            if (this.reward == om.reward) {
+                return 0;
+            }
+            return -1;
+        }
+
+        return 0;
     }
 
 }
