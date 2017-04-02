@@ -15,8 +15,12 @@ import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.math.Vector3;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import happy.people.ObstacleManager.ObstacleManager;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -55,6 +59,7 @@ public class Basic3DTest implements ApplicationListener {
     MuseOscServer mos;
     ObstacleManager[] networks;
     float[] rewards;
+    public Gson gson;
 
     ModelBuilder modelBuilder;
     Model hurdleModel;
@@ -74,7 +79,14 @@ public class Basic3DTest implements ApplicationListener {
         networkIndex = -1;
         networks = new ObstacleManager[NETWORKS_PER_EPOCH];
         rewards = new float[NETWORKS_PER_EPOCH];
-        for (int i = 0; i < NETWORKS_PER_EPOCH; i++) networks[i] = new ObstacleManager();
+        for (int i = 0; i < NETWORKS_PER_EPOCH; i++) {
+            do {
+                networks[i] = new ObstacleManager();
+            } while (networks[i].isBoring());
+        }
+        GsonBuilder gbuilder = new GsonBuilder();
+        gbuilder.setPrettyPrinting();
+        gson = gbuilder.create();
     }
 
     @Override
@@ -102,30 +114,45 @@ public class Basic3DTest implements ApplicationListener {
                 networks[i].reward = rewards[i];
             }
 
+            // store our neural nets
+            try {
+                FileWriter fw = new FileWriter("NEURALNETAT" + System.nanoTime() + ".json");
+                fw.write(gson.toJson(networks));
+                fw.flush();
+                fw.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
             ArrayList<ObstacleManager> forWorking = new ArrayList<ObstacleManager>();
             for (int i = 0; i < NETWORKS_PER_EPOCH; i++) forWorking.add(networks[i]);
             Collections.sort(forWorking);
 
             // Keep first, evolve first/second, second/third, random fourth.
             ObstacleManager[] newNetworks = new ObstacleManager[NETWORKS_PER_EPOCH];
-            newNetworks[0] = new ObstacleManager(networks[0]);
+            do {
+                newNetworks[0] = new ObstacleManager(new ObstacleManager(forWorking.get(0), 0.05f));
+            } while (newNetworks[0].isBoring());
             for (int i = 0; i < NETWORKS_PER_EPOCH - 1; i++) {
-                // 50% chance of crossing over, 50% chance of mutation
-                if (Math.random() < 0.5) {
-                    // Mutation
-                    ObstacleManager mutated = new ObstacleManager(networks[i], true);
-                } else {
-                    // Crossing over
-                    ObstacleManager mutated = new ObstacleManager(networks[i], networks[i+1]);
-                }
+                do {
+                    // 50% chance of crossing over, 50% chance of mutation
+                    if (Math.random() < 0.5) {
+                        // Mutation
+                        ObstacleManager mutated = new ObstacleManager(forWorking.get(i), 0.25f);
+                        newNetworks[i+1] = mutated;
+                    } else {
+                        // Crossing over
+                        ObstacleManager mutated = new ObstacleManager(forWorking.get(i), forWorking.get(i+1));
+                        newNetworks[i+1] = mutated;
+                    }
+                } while (newNetworks[i+1].isBoring());
             }
 
-            newNetworks[NETWORKS_PER_EPOCH-1] = new ObstacleManager();
+            do {
+                newNetworks[NETWORKS_PER_EPOCH-1] = new ObstacleManager();
+            } while (newNetworks[NETWORKS_PER_EPOCH-1].isBoring());
             networks = newNetworks;
 
-
-            // TODO: Evolution
-            for (int i = 0; i < NETWORKS_PER_EPOCH; i++) networks[i] = new ObstacleManager();
             epoch++;
         }
 
