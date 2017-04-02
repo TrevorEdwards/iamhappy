@@ -13,4 +13,12 @@ public abstract class Neuron {
         if (x < 0) return 0;
         return x;
     }
+
+    public static Neuron copyDispatch(Neuron target) {
+        if (target instanceof AggregateNeuron) {
+            return new AggregateNeuron((AggregateNeuron) target);
+        } else {
+            return new PrimitiveNeuron((PrimitiveNeuron) target);
+        }
+    }
 }

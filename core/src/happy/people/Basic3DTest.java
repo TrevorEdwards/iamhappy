@@ -74,7 +74,11 @@ public class Basic3DTest implements ApplicationListener {
         networkIndex = -1;
         networks = new ObstacleManager[NETWORKS_PER_EPOCH];
         rewards = new float[NETWORKS_PER_EPOCH];
-        for (int i = 0; i < NETWORKS_PER_EPOCH; i++) networks[i] = new ObstacleManager();
+        for (int i = 0; i < NETWORKS_PER_EPOCH; i++) {
+            do {
+                networks[i] = new ObstacleManager();
+            } while (networks[i].isBoring());
+        }
     }
 
     @Override
@@ -108,24 +112,29 @@ public class Basic3DTest implements ApplicationListener {
 
             // Keep first, evolve first/second, second/third, random fourth.
             ObstacleManager[] newNetworks = new ObstacleManager[NETWORKS_PER_EPOCH];
-            newNetworks[0] = new ObstacleManager(networks[0]);
+            do {
+                newNetworks[0] = new ObstacleManager(new ObstacleManager(forWorking.get(0), 0.05f));
+            } while (newNetworks[0].isBoring());
             for (int i = 0; i < NETWORKS_PER_EPOCH - 1; i++) {
-                // 50% chance of crossing over, 50% chance of mutation
-                if (Math.random() < 0.5) {
-                    // Mutation
-                    ObstacleManager mutated = new ObstacleManager(networks[i], true);
-                } else {
-                    // Crossing over
-                    ObstacleManager mutated = new ObstacleManager(networks[i], networks[i+1]);
-                }
+                do {
+                    // 50% chance of crossing over, 50% chance of mutation
+                    if (Math.random() < 0.5) {
+                        // Mutation
+                        ObstacleManager mutated = new ObstacleManager(forWorking.get(i), 0.25f);
+                        newNetworks[i+1] = mutated;
+                    } else {
+                        // Crossing over
+                        ObstacleManager mutated = new ObstacleManager(forWorking.get(i), forWorking.get(i+1));
+                        newNetworks[i+1] = mutated;
+                    }
+                } while (newNetworks[i+1].isBoring());
             }
 
-            newNetworks[NETWORKS_PER_EPOCH-1] = new ObstacleManager();
+            do {
+                newNetworks[NETWORKS_PER_EPOCH-1] = new ObstacleManager();
+            } while (newNetworks[NETWORKS_PER_EPOCH-1].isBoring());
             networks = newNetworks;
 
-
-            // TODO: Evolution
-            for (int i = 0; i < NETWORKS_PER_EPOCH; i++) networks[i] = new ObstacleManager();
             epoch++;
         }
 

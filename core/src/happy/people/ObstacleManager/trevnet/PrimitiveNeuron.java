@@ -11,6 +11,14 @@ public class PrimitiveNeuron extends Neuron {
         weight = toCopy.weight;
     }
 
+    public PrimitiveNeuron(PrimitiveNeuron toCopy, float mutationProbability) {
+        if (Math.random() < mutationProbability) {
+            weight = weightRandom();
+        } else {
+            weight = toCopy.weight;
+        }
+    }
+
     @Override
     public float calculate(float lastOutput) {
         return normalize(weight);

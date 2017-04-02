@@ -3,9 +3,9 @@ package happy.people.ObstacleManager.trevnet;
 import java.util.ArrayList;
 
 public class AggregateNeuron extends Neuron {
-    private ArrayList<Float> weights;
+    public ArrayList<Float> weights;
     private float lastOutputWeight;
-    private ArrayList<Neuron> children;
+    public ArrayList<Neuron> children;
 
     public AggregateNeuron(AggregateNeuron toCopy) {
         this.children = new ArrayList<Neuron>();
@@ -22,12 +22,61 @@ public class AggregateNeuron extends Neuron {
         this.lastOutputWeight = toCopy.lastOutputWeight;
     }
 
+    public AggregateNeuron(AggregateNeuron toCopy, float mutationProbability) {
+        this.children = new ArrayList<Neuron>();
+        this.weights = new ArrayList<Float>();
+        int nn=0;
+        for (Neuron n : toCopy.children) {
+            if (Math.random() < (mutationProbability / toCopy.children.size())) {
+                nn++;
+                continue; // don't copy
+            }
+            if (n instanceof AggregateNeuron) {
+                children.add(new AggregateNeuron((AggregateNeuron) n, mutationProbability));
+            } else if (n instanceof PrimitiveNeuron) {
+                children.add(new PrimitiveNeuron((PrimitiveNeuron) n, mutationProbability));
+            } else {
+            }
+            if (Math.random() < mutationProbability) {
+                weights.add(weightRandom());
+            } else {
+                weights.add(toCopy.weights.get(nn));
+            }
+            nn++;
+        }
+
+        if (Math.random() < mutationProbability) {
+            // add new child
+            if (Math.random() < 0.5) {
+                // primitive
+                children.add(new PrimitiveNeuron());
+            } else {
+                ArrayList<Neuron> mutateChildren = new ArrayList<Neuron>();
+                mutateChildren.add(new PrimitiveNeuron());
+                mutateChildren.add(new PrimitiveNeuron());
+                mutateChildren.add(new PrimitiveNeuron());
+                children.add(new AggregateNeuron(mutateChildren));
+            }
+
+            weights.add(weightRandom());
+        }
+
+        this.lastOutputWeight = toCopy.lastOutputWeight;
+    }
+
     public AggregateNeuron(ArrayList<Neuron> children) {
         this.children = children;
         this.weights = new ArrayList<Float>();
         for (int i = 0; i < children.size(); i++) {
             weights.add(weightRandom());
         }
+
+        lastOutputWeight = weightRandom();
+    }
+
+    public AggregateNeuron(ArrayList<Neuron> children, ArrayList<Float> weights) {
+        this.children = children;
+        this.weights = weights;
 
         lastOutputWeight = weightRandom();
     }
