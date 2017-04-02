@@ -255,7 +255,7 @@ public class Basic3DTest implements ApplicationListener {
         float secondsElapsed = Gdx.graphics.getDeltaTime();
         time++;
 
-        if (gameOn) {
+        if (gameOn && cam.position.y < 10) {
             speed = mos.getNormalizedStressVar() + baseSpeed;
             baseSpeed += SPEED_ADD;
 
@@ -301,18 +301,16 @@ public class Basic3DTest implements ApplicationListener {
             cam.update();
 
             // Shitty collision detection
-            if (z < OBSTACLE_HEIGHT) {
-                for (ModelInstance instance : hurdles) {
-                    Vector3 give = new Vector3();
-                    Vector3 pos = instance.transform.getTranslation(give);
-                    if (pos.y <= 0) {
-                        if (pos.y + OBSTACLE_DEPTH > 0) {
-                            reset();
-                            gameOn = false;
-                        }
-                    }
-                }
-            }
+			for (ModelInstance instance : hurdles) {
+				Vector3 pos = instance.transform.getTranslation(new Vector3());
+				if (pos.y<=1.75 && pos.y>=-0.25 && (
+						(pos.x==0 && cam.position.z<OBSTACLE_HEIGHT) ||
+								(pos.x==1 && cam.position.x>=0) ||
+								(pos.x==-1 && cam.position.x<=0))) {
+					reset();
+					gameOn = false;
+				}
+			}
 
             //instance.transform.setFromEulerAngles(0,0,time);
             for (ModelInstance instance : movingModels) {
