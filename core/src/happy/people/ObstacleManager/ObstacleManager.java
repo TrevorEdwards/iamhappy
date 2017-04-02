@@ -20,14 +20,15 @@ public class ObstacleManager implements Comparable {
         }
     }
 
-    public static final int UNIT_SIZE = 10;
-    public static final int MAX_OBSTACLE_PER_UNIT = 10;
+    public static final int UNIT_SIZE = 100;
+    public static final int MAX_OBSTACLE_PER_UNIT = 100;
+    public static final int MIN_OBSTACLE_PER_UNIT = 90;
     public static final int OBSTACLE_NONE = -1;
     public static final int OBSTACLE_LEFT = 0;
     public static final int OBSTACLE_RIGHT = 1;
     public static final int OBSTACLE_HURDLE = 2;
 
-    private float lastOutput;
+    public float lastOutput;
     private Neuron topNeuron;
 
     public int[] planObstacles() {
@@ -41,26 +42,36 @@ public class ObstacleManager implements Comparable {
             if (obstacles[i] != -1) numPlaced++;
         }
 
-//        int fixIt = 0;
-//        while (numPlaced < MAX_OBSTACLE_PER_UNIT) {
-//            // Corrective obstacle
-//            obstacles[UNIT_SIZE-1-fixIt] = 2;
-//            numPlaced++;
-//            fixIt++;
-//        }
 
-        int max = -1;
-        for (int i = 0; i < obstacles.length; i++) {
-            max = max < obstacles[i] ? obstacles[i] : max;
+        int numChanges = 0;
+        int numSames = 0;
+        boring = true;
+        boolean seen0 = false;
+        boolean seen1 = false;
+        boolean seen2 = false;
+        int lastSeen = obstacles[0];
+        for (int i = 1; i < obstacles.length; i++) {
+            if (obstacles[i] == 0) seen0 = true;
+            if (obstacles[i] == 1) seen1 = true;
+            if (obstacles[i] == 2) seen2 = true;
+            if (obstacles[i] != lastSeen) {
+                numChanges++;
+            } else if (obstacles[i] != -1) {
+                numSames++;
+            }
+            lastSeen = obstacles[i];
         }
 
-        boring = true;
+        if (numChanges > 2 && numSames > 1 && numPlaced >= MIN_OBSTACLE_PER_UNIT && seen0 && seen1 && seen2) {
+            boring = false;
+        }
 
-        for (int i = 0; i < obstacles.length; i++) {
-            if ( (obstacles[i] != max) && (obstacles[i] != -1) && (max != -1)) {
-                boring = false;
-                break;
-            }
+        int fixIt = 0;
+        while (numPlaced < MIN_OBSTACLE_PER_UNIT) {
+            // Corrective obstacle
+            obstacles[UNIT_SIZE-1-fixIt] = 2;
+            numPlaced++;
+            fixIt++;
         }
 
         return obstacles;
@@ -76,7 +87,20 @@ public class ObstacleManager implements Comparable {
         children.add(p1);
         children.add(p2);
         children.add(p3);
-        topNeuron = new AggregateNeuron(children);
+        AggregateNeuron temp1 = new AggregateNeuron(children);
+        ArrayList<Neuron> children2 = new ArrayList<Neuron>();
+        PrimitiveNeuron p12 = new PrimitiveNeuron();
+        PrimitiveNeuron p22 = new PrimitiveNeuron();
+        PrimitiveNeuron p32 = new PrimitiveNeuron();
+        children.add(p12);
+        children.add(p22);
+        children.add(p32);
+        AggregateNeuron temp = new AggregateNeuron(children2);
+        ArrayList<Neuron> megaAgg = new ArrayList<Neuron>();
+        megaAgg.add(temp1);
+        megaAgg.add(temp);
+        topNeuron = new AggregateNeuron(megaAgg);
+//        topNeuron = new AggregateNeuron(temp, 0.1f);
     }
 
     // Copy constructor
@@ -174,6 +198,7 @@ public class ObstacleManager implements Comparable {
     }
 
     public int neuronToObstacle(float neuronOut) {
+//        System.out.println("HMM: " + neuronOut);
         if (neuronOut < 0.25) {
             return OBSTACLE_NONE;
         } else if (neuronOut < 0.5) {
@@ -202,9 +227,13 @@ public class ObstacleManager implements Comparable {
     }
 
     public boolean isBoring() {
-        planObstacles();
+        for (float i = 0; i < 1.0f; i += 0.2f) {
+            this.lastOutput = i;
+            planObstacles();
+            if (boring) return true;
+        }
         this.lastOutput = 0;
-        return boring;
+        return false;
     }
 
 }

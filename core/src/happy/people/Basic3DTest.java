@@ -45,9 +45,11 @@ public class Basic3DTest implements ApplicationListener {
     static final float gravity = 1.3f;
     static final float OBSTACLE_HEIGHT = 2f;
     static final float OBSTACLE_DEPTH = 0.9f;
-    static final float SPEED_ADD = 0.0004f;
-    static final float BASE_SPEED = 0.4f;
+    static final float SPEED_ADD = 0.0008f;
+    static final float BASE_SPEED = 1.0f;
     static final int NETWORKS_PER_EPOCH = 4;
+    static final float SIDE_OFFSET = 0.8f;
+    static final float SIDE_WIDTH = 0.8f;
     float baseSpeed;
     float velocity = 0.0f;
     int networkIndex;
@@ -71,6 +73,7 @@ public class Basic3DTest implements ApplicationListener {
     private final float JUMP_VELOCITY = 0.4f;
     private Batch batchBatch;
     private ArrayList<ModelInstance> hurdles;
+    private boolean wonGame;
 
     public Basic3DTest() {
         mos = new MuseOscServer();
@@ -114,15 +117,15 @@ public class Basic3DTest implements ApplicationListener {
                 networks[i].reward = rewards[i];
             }
 
-            // store our neural nets
-            try {
-                FileWriter fw = new FileWriter("NEURALNETAT" + System.nanoTime() + ".json");
-                fw.write(gson.toJson(networks));
-                fw.flush();
-                fw.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+//            // store our neural nets
+//            try {
+//                FileWriter fw = new FileWriter("NEURALNETAT" + System.nanoTime() + ".json");
+//                fw.write(gson.toJson(networks));
+//                fw.flush();
+//                fw.close();
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
 
             ArrayList<ObstacleManager> forWorking = new ArrayList<ObstacleManager>();
             for (int i = 0; i < NETWORKS_PER_EPOCH; i++) forWorking.add(networks[i]);
@@ -131,17 +134,17 @@ public class Basic3DTest implements ApplicationListener {
             // Keep first, evolve first/second, second/third, random fourth.
             ObstacleManager[] newNetworks = new ObstacleManager[NETWORKS_PER_EPOCH];
             do {
-                newNetworks[0] = new ObstacleManager(new ObstacleManager(forWorking.get(0), 0.05f));
+                newNetworks[0] = new ObstacleManager(forWorking.get(0), 0.05f);
             } while (newNetworks[0].isBoring());
             for (int i = 0; i < NETWORKS_PER_EPOCH - 1; i++) {
                 do {
                     // 50% chance of crossing over, 50% chance of mutation
-                    if (Math.random() < 0.5) {
+                    if (Math.random() < 0.99999) {
                         // Mutation
                         ObstacleManager mutated = new ObstacleManager(forWorking.get(i), 0.25f);
                         newNetworks[i+1] = mutated;
                     } else {
-                        // Crossing over
+                        // Crossing over (I dont trust it rn)
                         ObstacleManager mutated = new ObstacleManager(forWorking.get(i), forWorking.get(i+1));
                         newNetworks[i+1] = mutated;
                     }
@@ -160,15 +163,15 @@ public class Basic3DTest implements ApplicationListener {
 
         // Obstacle models
         hurdleModel = modelBuilder.createBox(3f, 0.9f, OBSTACLE_HEIGHT + 1,
-                new Material(ColorAttribute.createReflection(Color.YELLOW)),
+                new Material(ColorAttribute.createDiffuse(Color.GOLD)),
                 VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
 
-        leftWallModel = modelBuilder.createBox(1f, 0.9f, OBSTACLE_HEIGHT + 10,
-                new Material(ColorAttribute.createReflection(Color.RED)),
+        leftWallModel = modelBuilder.createBox(SIDE_WIDTH * 2, 0.9f, OBSTACLE_HEIGHT + 10,
+                new Material(ColorAttribute.createDiffuse(Color.CORAL)),
                 VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
 
-        rightWallModel = modelBuilder.createBox(1f, 0.9f, OBSTACLE_HEIGHT + 10,
-                new Material(ColorAttribute.createReflection(Color.BLUE)),
+        rightWallModel = modelBuilder.createBox(SIDE_WIDTH * 2, 0.9f, OBSTACLE_HEIGHT + 10,
+                new Material(ColorAttribute.createDiffuse(Color.BROWN)),
                 VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
         hurdles = new ArrayList<ModelInstance>();
 
@@ -199,25 +202,49 @@ public class Basic3DTest implements ApplicationListener {
         grass = modelBuilder.createBox(200f,200f,2f, new Material(ColorAttribute.createDiffuse(Color.DARK_GRAY)),VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
         grassInstance = new ModelInstance(grass);
 
-        // Skyscrapers
-        model = modelBuilder.createBox(5f, 5f, 50f,
+        // River
+        model = modelBuilder.createBox(5000f, 5f, 1f,
                 new Material(ColorAttribute.createDiffuse(Color.BLUE)),
                 VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
         movingModels = new ArrayList<ModelInstance>();
         ModelInstance exInstance = new ModelInstance(model);
-        exInstance.transform.setToTranslation(5,0,-1);
+        exInstance.transform.setToTranslation(5,0,-1.4f );
         movingModels.add(exInstance);
+
+        // Trees
+        model = modelBuilder.createBox(1f, 1f, 8f,
+                new Material(ColorAttribute.createDiffuse(Color.BROWN)),
+                VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
         exInstance = new ModelInstance(model);
         exInstance.transform.setToTranslation(-5,25,-1);
         movingModels.add(exInstance);
+        exInstance = new ModelInstance(model);
+        exInstance.transform.setToTranslation(15,50,-1);
+        movingModels.add(exInstance);
+        exInstance = new ModelInstance(model);
+        exInstance.transform.setToTranslation(45,150,-1);
+        movingModels.add(exInstance);
+
+        model = modelBuilder.createBox(5f, 5f, 3f,
+                new Material(ColorAttribute.createDiffuse(Color.GREEN)),
+                VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
+        exInstance = new ModelInstance(model);
+        exInstance.transform.setToTranslation(-5,25,4);
+        movingModels.add(exInstance);
+        exInstance = new ModelInstance(model);
+        exInstance.transform.setToTranslation(15,50,4);
+        movingModels.add(exInstance);
+        exInstance = new ModelInstance(model);
+        exInstance.transform.setToTranslation(45,150,4);
+        movingModels.add(exInstance);
 
         // Make sidewalk
-        Model sidewalkModel = modelBuilder.createBox(3f, 4.9f, 1f,
+        Model sidewalkModel = modelBuilder.createBox(3f, 5f, 1f,
                 new Material(ColorAttribute.createReflection(Color.TAN)),
                 VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
         for (float y = resetPos; y < resetDistance; y += 5) {
             ModelInstance sInstance = new ModelInstance(sidewalkModel);
-            sInstance.transform.setToTranslation(0,y,-1);
+            sInstance.transform.setToTranslation(0,y,-1.3f);
             movingModels.add(sInstance);
         }
 
@@ -232,12 +259,12 @@ public class Basic3DTest implements ApplicationListener {
                 case ObstacleManager.OBSTACLE_NONE: break;
                 case ObstacleManager.OBSTACLE_LEFT:
                     mInstance = new ModelInstance(leftWallModel);
-                    mInstance.transform.setToTranslation(-1,y,-1);
+                    mInstance.transform.setToTranslation(-SIDE_OFFSET,y,-1);
                     hurdles.add(mInstance);
                     break;
                 case ObstacleManager.OBSTACLE_RIGHT:
                     mInstance = new ModelInstance(rightWallModel);
-                    mInstance.transform.setToTranslation(1,y,-1);
+                    mInstance.transform.setToTranslation(SIDE_OFFSET,y,-1);
                     hurdles.add(mInstance);
                     break;
                 case ObstacleManager.OBSTACLE_HURDLE:
@@ -256,13 +283,26 @@ public class Basic3DTest implements ApplicationListener {
         time++;
 
         if (gameOn && cam.position.y < 10) {
-            speed = mos.getNormalizedStressVar() + baseSpeed;
-            baseSpeed += SPEED_ADD;
+            if (distanceTraveled >= 5000) {
+                reset();
+                wonGame = true;
+                gameOn = false;
+            }
+            if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
+                speed = (mos.getNormalizedStressVar() + baseSpeed) * 4;
+                baseSpeed += SPEED_ADD * 4;
+            } else {
+                speed = mos.getNormalizedStressVar() + baseSpeed;
+                baseSpeed += SPEED_ADD;
+            }
 
             float lightWow = 0.2f + (speed - BASE_SPEED) / (8*BASE_SPEED);
+            float stressWow = mos.getNormalizedStressVar() / 0.3f;
             environment.set(new ColorAttribute(ColorAttribute.AmbientLight, lightWow, lightWow, lightWow, 9f));
-            fogInstance.materials.get(0).set(ColorAttribute.createDiffuse(new Color(lightWow - 0.2f,0,0,1.00f)));
-//            environment.add(new DirectionalLight().set(0.3f, 0.3f, 0.3f, 0f, 90f, 0f));
+            fogInstance.materials.get(0).set(ColorAttribute.createDiffuse(new Color(lightWow - 0.2f + .61f,.478f,stressWow + .839f,1.00f)));
+            grassInstance.materials.get(0).set(ColorAttribute.createDiffuse(new Color(0,stressWow,0,1.00f)));
+
+            //            environment.add(new DirectionalLight().set(0.3f, 0.3f, 0.3f, 0f, 90f, 0f));
 
             // Shitty physics
             float z = cam.position.z;
@@ -279,13 +319,13 @@ public class Basic3DTest implements ApplicationListener {
                 z = camheight;
                 System.out.println("right");
                 if (cam.position.x < 3f/2) {
-                    cam.position.x += 0.1;
+                    cam.position.x += 0.1 * speed;
                 }
             } else if (Gdx.input.isKeyPressed(Input.Keys.LEFT)){
                 z = camheight;
                 System.out.println("left");
                 if (cam.position.x > -3f/2) {
-                    cam.position.x -= 0.1;
+                    cam.position.x -= 0.1 * speed;
                 }
             } else {
                 velocity = 0;
@@ -305,8 +345,8 @@ public class Basic3DTest implements ApplicationListener {
 				Vector3 pos = instance.transform.getTranslation(new Vector3());
 				if (pos.y<=1.75 && pos.y>=-0.25 && (
 						(pos.x==0 && cam.position.z<OBSTACLE_HEIGHT) ||
-								(pos.x==1 && cam.position.x>=0) ||
-								(pos.x==-1 && cam.position.x<=0))) {
+								(pos.x==SIDE_OFFSET && cam.position.x>=SIDE_OFFSET - SIDE_WIDTH) ||
+								(pos.x==-SIDE_OFFSET && cam.position.x<=-SIDE_OFFSET + SIDE_WIDTH))) {
 					reset();
 					gameOn = false;
 				}
@@ -317,8 +357,9 @@ public class Basic3DTest implements ApplicationListener {
                 Vector3 give = new Vector3();
                 Vector3 mxyz = instance.transform.getTranslation(give);
                 mxyz.y -= speed * 0.3;
-                if (mxyz.y > resetDistance) mxyz.y = resetPos;
-                if (mxyz.y < resetPos) mxyz.y = resetDistance;
+                if (mxyz.y < resetPos) {
+                    mxyz.y = resetDistance + (mxyz.y - resetPos);
+                }
                 instance.transform.setToTranslation(mxyz.x,mxyz.y,mxyz.z);
             }
 
@@ -336,8 +377,9 @@ public class Basic3DTest implements ApplicationListener {
                 instance.transform.setToTranslation(mxyz.x,mxyz.y,mxyz.z);
             }
             hurdles = copyModels;
-            if (hurdles.size() < 9) {
-                mintObstacleSet(networks[networkIndex].planObstacles(), 150 + resetPos);
+            if (hurdles.size() < ObstacleManager.MAX_OBSTACLE_PER_UNIT) {
+                networks[networkIndex].lastOutput = (float) Math.random();
+                mintObstacleSet(networks[networkIndex].planObstacles(), ObstacleManager.UNIT_SIZE * 15);
             }
 
             grassInstance.transform.setToTranslation(0,10,-2);
@@ -361,13 +403,22 @@ public class Basic3DTest implements ApplicationListener {
             font.draw(batchBatch,"Objective Function: " + objectiveFunction(distanceTraveled,stressGenerated),25,100);
             batchBatch.end();
         } else {
+            Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+            Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
             modelBatch.begin(cam);
+
             modelBatch.end();
             batchBatch.begin();
             font.draw(batchBatch,"Stress Level: " + mos.getNormalizedStressVar(),Gdx.graphics.getWidth() /4,Gdx.graphics.getWidth() / 4);
             font.draw(batchBatch,"Press space to begin!",Gdx.graphics.getWidth() /2,Gdx.graphics.getWidth() / 2);
+            if (wonGame) {
+                font.draw(batchBatch,"You won!",Gdx.graphics.getWidth() /2,Gdx.graphics.getWidth() / 2 + 25);
+            }
             batchBatch.end();
-            if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) gameOn = true;
+            if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
+                gameOn = true;
+                wonGame = false;
+            }
         }
     }
 

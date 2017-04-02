@@ -25,10 +25,9 @@ public class AggregateNeuron extends Neuron {
     public AggregateNeuron(AggregateNeuron toCopy, float mutationProbability) {
         this.children = new ArrayList<Neuron>();
         this.weights = new ArrayList<Float>();
-        int nn=0;
-        for (Neuron n : toCopy.children) {
+        for (int i = 0; i < toCopy.children.size(); i++) {
+            Neuron n = toCopy.children.get(i);
             if (Math.random() < (mutationProbability / toCopy.children.size())) {
-                nn++;
                 continue; // don't copy
             }
             if (n instanceof AggregateNeuron) {
@@ -37,12 +36,15 @@ public class AggregateNeuron extends Neuron {
                 children.add(new PrimitiveNeuron((PrimitiveNeuron) n, mutationProbability));
             } else {
             }
+
             if (Math.random() < mutationProbability) {
                 weights.add(weightRandom());
             } else {
-                weights.add(toCopy.weights.get(nn));
+                if (toCopy.weights.size() > i)
+                    weights.add(toCopy.weights.get(i));
+                else
+                    weights.add(weightRandom());
             }
-            nn++;
         }
 
         if (Math.random() < mutationProbability) {
