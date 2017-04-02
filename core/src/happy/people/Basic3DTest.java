@@ -179,17 +179,27 @@ public class Basic3DTest implements ApplicationListener {
                 // Flying
                 velocity -= gravity * secondsElapsed * speed;
                 z += velocity * speed;
-            } else {
-                // Not flying
+            } else if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
                 z = camheight;
-                if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
-                    System.out.println("jump");
-                    velocity = JUMP_VELOCITY;
-                    z += 0.0001;
-                } else {
-                    velocity = 0;
+                System.out.println("jump");
+                velocity = JUMP_VELOCITY;
+                z += 0.0001;
+            } else if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+                z = camheight;
+                System.out.println("right");
+                if (cam.position.x < 3f/2) {
+                    cam.position.x += 0.1;
                 }
+            } else if (Gdx.input.isKeyPressed(Input.Keys.LEFT)){
+                z = camheight;
+                System.out.println("left");
+                if (cam.position.x > -3f/2) {
+                    cam.position.x -= 0.1;
+                }
+            } else {
+                velocity = 0;
             }
+
             //cam.rotate(0.5f, 0,1,0);
             if (time % 120 > 60) {
                 // cam.position.set(0, 0, camheight + (addheight * (1/60f) * (time % 60)) );
@@ -283,5 +293,4 @@ public class Basic3DTest implements ApplicationListener {
     @Override
     public void pause () {
     }
-
 }
