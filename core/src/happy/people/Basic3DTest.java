@@ -1,10 +1,14 @@
 package happy.people;
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.VertexAttributes;
+import com.badlogic.gdx.graphics.g2d.Batch;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g3d.*;
 import com.badlogic.gdx.graphics.g3d.attributes.BlendingAttribute;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
@@ -14,7 +18,7 @@ import com.badlogic.gdx.math.Vector3;
 
 import java.util.ArrayList;
 
-public class Basic3DTest implements ApplicationListener {
+public class Basic3DTest implements ApplicationListener, RendererForVR {
 
     public Environment environment;
     public PerspectiveCamera cam;
@@ -27,19 +31,50 @@ public class Basic3DTest implements ApplicationListener {
     ArrayList<ModelInstance> movingModels;
     static final float resetDistance = 200;
     static final float resetPos = -10;
-    static final float speed = -0.5f;
-
+    static float speed = 1.0f;
+    static final float camheight = 0.5f;
+    static final float addheight = 1.0f;
+    static final float gravity = 1.3f;
+    static final float OBSTACLE_HEIGHT = 2f;
+    static final float OBSTACLE_DEPTH = 0.9f;
+    static final float SPEED_ADD = 0.0004f;
+    float baseSpeed;
+    float velocity = 0.0f;
+    public VRCamera camv;
+    VRCameraInputAdapter ugh;
+    BitmapFont font; //or use alex answer to use custom font
+    boolean gameOn;
+    MuseOscServer mos;
 
     public float time = 0;
+    public long lastUpdateTime;
+    private final float JUMP_VELOCITY = 0.4f;
+    private Batch batchBatch;
+    private ArrayList<ModelInstance> hurdles;
+
+    public Basic3DTest() {
+        mos = new MuseOscServer();
+        mos.start();
+    }
     @Override
     public void create () {
+        reset();
+    }
+
+    public void reset() {
+        baseSpeed = 0.4f;
         environment = new Environment();
-        environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.1f, 0.1f, 0.1f, 1f));
-        environment.add(new DirectionalLight().set(0.8f, 0.3f, 0.3f, 0f, 90f, 0f));
+        environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.15f, 0.1f, 0.1f, 9f));
+        environment.add(new DirectionalLight().set(0.3f, 0.3f, 0.3f, 0f, 90f, 0f));
         modelBatch = new ModelBatch();
+        batchBatch = new SpriteBatch();
+        font = new BitmapFont();
 
         cam = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        cam.position.set(0, 0, 1.6f);
+        camv = new VRCamera(67, 0.01f, 128f, 0.1f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), this);
+        camv.update();
+        ugh = new VRCameraInputAdapter(camv);
+        cam.position.set(0, 0, camheight);
         cam.lookAt(0,10000,0);
         cam.near = 1f;
         cam.far = 300f;
@@ -53,11 +88,11 @@ public class Basic3DTest implements ApplicationListener {
         fogModel.materials.get(0).set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));
         fogInstance = new ModelInstance(fogModel);
         fogInstance.transform.setToTranslation(0,150f,0);
-        grass = modelBuilder.createBox(200f,200f,2f, new Material(ColorAttribute.createDiffuse(Color.GREEN)),VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
+        grass = modelBuilder.createBox(200f,200f,2f, new Material(ColorAttribute.createDiffuse(Color.DARK_GRAY)),VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
         grassInstance = new ModelInstance(grass);
         // Water
-        
-        movingModels = new ArrayList<>();
+
+        movingModels = new ArrayList<ModelInstance>();
         ModelInstance exInstance = new ModelInstance(model);
         exInstance.transform.setToTranslation(5,0,-1);
         movingModels.add(exInstance);
@@ -73,32 +108,103 @@ public class Basic3DTest implements ApplicationListener {
             sInstance.transform.setToTranslation(0,y,-1);
             movingModels.add(sInstance);
         }
+
+        //hurdles
+        hurdles = new ArrayList<ModelInstance>();
+        Model hurdleModel = modelBuilder.createBox(3f, 0.9f, OBSTACLE_HEIGHT + 1,
+                new Material(ColorAttribute.createReflection(Color.YELLOW)),
+                VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
+        for (float y = 30; y < resetDistance; y += 15) {
+            ModelInstance sInstance = new ModelInstance(hurdleModel);
+            sInstance.transform.setToTranslation(0,y,-1);
+            movingModels.add(sInstance);
+            hurdles.add(sInstance);
+        }
     }
 
     @Override
     public void render () {
+        float secondsElapsed = Gdx.graphics.getDeltaTime();
+       // ugh.update(secondsElapsed);
+       // camv.update();
         time++;
-        //instance.transform.setFromEulerAngles(0,0,time);
-        for (ModelInstance instance : movingModels) {
-            Vector3 give = new Vector3();
-            Vector3 mxyz = instance.transform.getTranslation(give);
-            mxyz.y += speed;
-            if (mxyz.y > resetDistance) mxyz.y = resetPos;
-            if (mxyz.y < resetPos) mxyz.y = resetDistance;
-            instance.transform.setToTranslation(mxyz.x,mxyz.y,mxyz.z);
-        }
 
-        grassInstance.transform.setToTranslation(0,10,-2);
-        Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+        if (gameOn) {
+            speed = mos.getNormalizedStressVar() + baseSpeed;
+            baseSpeed += SPEED_ADD;
+            // Shitty physics
+            float z = cam.position.z;
+            if (z > camheight) {
+                // Flying
+                velocity -= gravity * secondsElapsed * speed;
+                z += velocity * speed;
+            } else {
+                // Not flying
+                z = camheight;
+                if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
+                    System.out.println("jump");
+                    velocity = JUMP_VELOCITY;
+                    z += 0.0001;
+                } else {
+                    velocity = 0;
+                }
+            }
+            //cam.rotate(0.5f, 0,1,0);
+            if (time % 120 > 60) {
+                // cam.position.set(0, 0, camheight + (addheight * (1/60f) * (time % 60)) );
+            } else {
+                // cam.position.set(0, 0, camheight + addheight - (addheight * (1/60f) * (time % 60)) );
+            }
+            cam.position.z = z;
+            cam.update();
 
-        modelBatch.begin(cam);
-        modelBatch.render(grassInstance, environment);
-        for (ModelInstance instance : movingModels) {
-            modelBatch.render(instance, environment);
+            // Shitty collision detection
+            if (z < OBSTACLE_HEIGHT) {
+                for (ModelInstance instance : hurdles) {
+                    Vector3 give = new Vector3();
+                    Vector3 pos = instance.transform.getTranslation(give);
+                    if (pos.y <= 0) {
+                        if (pos.y + OBSTACLE_DEPTH > 0) {
+                            reset();
+                            gameOn = false;
+                        }
+                    }
+                }
+            }
+
+            //instance.transform.setFromEulerAngles(0,0,time);
+            for (ModelInstance instance : movingModels) {
+                Vector3 give = new Vector3();
+                Vector3 mxyz = instance.transform.getTranslation(give);
+                mxyz.y -= speed * 0.3;
+                if (mxyz.y > resetDistance) mxyz.y = resetPos;
+                if (mxyz.y < resetPos) mxyz.y = resetDistance;
+                instance.transform.setToTranslation(mxyz.x,mxyz.y,mxyz.z);
+            }
+
+            grassInstance.transform.setToTranslation(0,10,-2);
+            Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+            Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+
+            modelBatch.begin(cam);
+            modelBatch.render(grassInstance, environment);
+            for (ModelInstance instance : movingModels) {
+                modelBatch.render(instance, environment);
+            }
+            modelBatch.render(fogInstance,environment);
+            modelBatch.end();
+            batchBatch.begin();
+            font.draw(batchBatch,"Stress Level: " + mos.getNormalizedStressVar(),Gdx.graphics.getWidth() /4,Gdx.graphics.getWidth() / 4);
+            batchBatch.end();
+        } else {
+            modelBatch.begin(cam);
+            modelBatch.end();
+            batchBatch.begin();
+            font.draw(batchBatch,"Stress Level: " + mos.getNormalizedStressVar(),Gdx.graphics.getWidth() /4,Gdx.graphics.getWidth() / 4);
+            font.draw(batchBatch,"Press space to begin!",Gdx.graphics.getWidth() /2,Gdx.graphics.getWidth() / 2);
+            batchBatch.end();
+            if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) gameOn = true;
         }
-        modelBatch.render(fogInstance,environment);
-        modelBatch.end();
     }
 
     @Override
@@ -117,5 +223,57 @@ public class Basic3DTest implements ApplicationListener {
 
     @Override
     public void pause () {
+    }
+
+    @Override
+    public void renderForVR(PerspectiveCamera cam) {
+        float secondsElapsed = Gdx.graphics.getDeltaTime();
+        time++;
+
+        // Shitty physics
+        float z = cam.position.z;
+        if (z > camheight) {
+            // Flying
+            velocity -= gravity * secondsElapsed * speed;
+            z += velocity * speed;
+        } else {
+            // Not flying
+            z = camheight;
+            if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
+                velocity = JUMP_VELOCITY;
+                z += 0.0001;
+            } else {
+                velocity = 0;
+            }
+        }
+        //cam.rotate(0.5f, 0,1,0);
+        if (time % 120 > 60) {
+            // cam.position.set(0, 0, camheight + (addheight * (1/60f) * (time % 60)) );
+        } else {
+            // cam.position.set(0, 0, camheight + addheight - (addheight * (1/60f) * (time % 60)) );
+        }
+        cam.position.z = z;
+        cam.update();
+        //instance.transform.setFromEulerAngles(0,0,time);
+        for (ModelInstance instance : movingModels) {
+            Vector3 give = new Vector3();
+            Vector3 mxyz = instance.transform.getTranslation(give);
+            mxyz.y -= speed * 0.3;
+            if (mxyz.y > resetDistance) mxyz.y = resetPos;
+            if (mxyz.y < resetPos) mxyz.y = resetDistance;
+            instance.transform.setToTranslation(mxyz.x,mxyz.y,mxyz.z);
+        }
+
+        grassInstance.transform.setToTranslation(0,10,-2);
+        Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+
+        modelBatch.begin(cam);
+        modelBatch.render(grassInstance, environment);
+        for (ModelInstance instance : movingModels) {
+            modelBatch.render(instance, environment);
+        }
+        modelBatch.render(fogInstance,environment);
+        modelBatch.end();
     }
 }

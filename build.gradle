@@ -24,10 +24,19 @@ allprojects {
     }
 
     repositories {
+        flatDir {
+            dirs 'lib'
+        }
         mavenLocal()
         mavenCentral()
         maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
         maven { url "https://oss.sonatype.org/content/repositories/releases/" }
+    }
+}
+
+repositories {
+    flatDir {
+        dirs 'lib'
     }
 }
 
@@ -52,6 +61,7 @@ project(":core") {
     dependencies {
         compile "com.badlogicgames.gdx:gdx:$gdxVersion"
         compile "com.badlogicgames.gdx:gdx-controllers:$gdxVersion"
+        compile fileTree(dir: 'lib',include:'*.jar')
     }
 }
 

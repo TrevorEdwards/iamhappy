@@ -11,6 +11,7 @@ public class DesktopLauncher {
 		LwjglApplicationConfiguration config = new LwjglApplicationConfiguration();
 		config.height = 768;
 		config.width = 1024;
+		config.foregroundFPS = 60;
 		config.fullscreen = true;
 		Basic3DTest box = new Basic3DTest();
 		new LwjglApplication(box, config);
