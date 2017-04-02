@@ -1,14 +1,14 @@
 package happy.people.ObstacleManager.trevnet;
 
 public class PrimitiveNeuron extends Neuron {
-    private float weight;
+    public float weight;
 
     public PrimitiveNeuron() {
-        weight = weightRandom();
+        this.weight = weightRandom();
     }
 
     public PrimitiveNeuron(PrimitiveNeuron toCopy) {
-        weight = toCopy.weight;
+        this.weight = toCopy.weight;
     }
 
     public PrimitiveNeuron(PrimitiveNeuron toCopy, float mutationProbability) {

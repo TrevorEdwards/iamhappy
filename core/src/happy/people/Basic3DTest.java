@@ -15,8 +15,12 @@ import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.math.Vector3;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import happy.people.ObstacleManager.ObstacleManager;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -55,6 +59,7 @@ public class Basic3DTest implements ApplicationListener {
     MuseOscServer mos;
     ObstacleManager[] networks;
     float[] rewards;
+    public Gson gson;
 
     ModelBuilder modelBuilder;
     Model hurdleModel;
@@ -79,6 +84,9 @@ public class Basic3DTest implements ApplicationListener {
                 networks[i] = new ObstacleManager();
             } while (networks[i].isBoring());
         }
+        GsonBuilder gbuilder = new GsonBuilder();
+        gbuilder.setPrettyPrinting();
+        gson = gbuilder.create();
     }
 
     @Override
@@ -104,6 +112,16 @@ public class Basic3DTest implements ApplicationListener {
             // Apply rewards and sort
             for (int i = 0; i < NETWORKS_PER_EPOCH; i++) {
                 networks[i].reward = rewards[i];
+            }
+
+            // store our neural nets
+            try {
+                FileWriter fw = new FileWriter("NEURALNETAT" + System.nanoTime() + ".json");
+                fw.write(gson.toJson(networks));
+                fw.flush();
+                fw.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
 
             ArrayList<ObstacleManager> forWorking = new ArrayList<ObstacleManager>();
